@@ -1,0 +1,54 @@
+name: Byrne tee time watcher
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"   # every 10 minutes
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "check, test (send a test push), or discover (list booking classes)"
+        default: check
+        type: choice
+        options: [check, test, discover]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: tee-watcher
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install requests
+
+      - name: Run checker
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          BOOKING_CLASS: ${{ vars.BOOKING_CLASS }}
+        run: |
+          case "${{ inputs.mode }}" in
+            test)     python tee_checker.py --test ;;
+            discover) python tee_checker.py --discover ;;
+            *)        python tee_checker.py ;;
+          esac
+
+      - name: Save state
+        if: always()
+        run: |
+          if [ -n "$(git status --porcelain state.json)" ]; then
+            git config user.name "tee-watcher"
+            git config user.email "tee-watcher@users.noreply.github.com"
+            git add state.json
+            git commit -m "Update tee time state"
+            git push
+          fi
