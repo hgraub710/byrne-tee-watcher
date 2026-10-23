@@ -1,5 +1,7 @@
 {
-  "available": [],
+  "available": [
+    "2026-10-24 08:00"
+  ],
   "fail_alerted": false,
   "failures": 0
 }
